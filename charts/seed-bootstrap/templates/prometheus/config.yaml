@@ -22,5 +22,7 @@ data:
       - source_labels: [__meta_kubernetes_service_label_app]
         action: keep
         regex: avalanche
-      - source_labels: [__meta_kubernetes_service_label_component]
+      - source_labels: [__meta_kubernetes_pod_label_metric_type]
+        target_label: metric_type
+      - source_labels: [__meta_kubernetes_pod_label_component]
         target_label: job
