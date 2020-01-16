@@ -39,11 +39,22 @@ spec:
         image: {{ index .Values.images "etcd" }}
         imagePullPolicy: IfNotPresent
         command:
-        - /bootstrap/bootstrap.sh
+        - etcd
+        - --config-file
+        - /bootstrap/etcd.conf.yml
         readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 8080
+          exec:
+            command:
+            - /bin/sh
+            - -ec
+            - ETCDCTL_API=3
+            - etcdctl
+            - --cert=/var/etcd/ssl/client/tls.crt
+            - --key=/var/etcd/ssl/client/tls.key
+            - --cacert=/var/etcd/ssl/ca/ca.crt
+            - --endpoints=https://etcd-{{ .Values.role }}-0:{{ .Values.servicePorts.client }}
+            - endpoint
+            - health
           initialDelaySeconds: 5
           periodSeconds: 5
         livenessProbe:
@@ -67,6 +78,9 @@ spec:
           protocol: TCP
         - containerPort: {{ .Values.servicePorts.client }}
           name: clientport
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
           protocol: TCP
         {{- if .Values.etcdResources }}
         resources:
