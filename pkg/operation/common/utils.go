@@ -57,7 +57,7 @@ var json = jsoniter.ConfigFastest
 
 // GetSecretKeysWithPrefix returns a list of keys of the given map <m> which are prefixed with <kind>.
 func GetSecretKeysWithPrefix(kind string, m map[string]*corev1.Secret) []string {
-	result := []string{}
+	var result []string
 	for key := range m {
 		if strings.HasPrefix(key, kind) {
 			result = append(result, key)

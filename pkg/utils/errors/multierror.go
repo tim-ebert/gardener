@@ -26,7 +26,7 @@ import (
 func NewErrorFormatFuncWithPrefix(prefix string) multierror.ErrorFormatFunc {
 	return func(es []error) string {
 		if len(es) == 1 {
-			return fmt.Sprintf("%s: 1 error occurred: %s", prefix, es[0])
+			return fmt.Sprintf("%s: 1 error occurred: %s", prefix, es[0].Error())
 		}
 
 		combinedMsg := ""

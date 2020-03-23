@@ -28,7 +28,10 @@ import (
 
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils"
+	utilerrors "github.com/gardener/gardener/pkg/utils/errors"
 	kutil "github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -269,7 +272,7 @@ func signCertificate(certificateTemplate *x509.Certificate, privateKey *rsa.Priv
 	return utils.EncodeCertificate(certificate), nil
 }
 
-func generateCA(k8sClusterClient kubernetes.Interface, config *CertificateSecretConfig, namespace string) (*corev1.Secret, *Certificate, error) {
+func generateCA(config *CertificateSecretConfig, namespace string) (*corev1.Secret, *Certificate, error) {
 	certificate, err := config.GenerateCertificate()
 	if err != nil {
 		return nil, nil, err
@@ -284,9 +287,6 @@ func generateCA(k8sClusterClient kubernetes.Interface, config *CertificateSecret
 		Data: certificate.SecretData(),
 	}
 
-	if err := k8sClusterClient.Client().Create(context.TODO(), secret); err != nil {
-		return nil, nil, err
-	}
 	return secret, certificate, nil
 }
 
@@ -298,10 +298,42 @@ func loadCA(name string, existingSecret *corev1.Secret) (*corev1.Secret, *Certif
 	return existingSecret, certificate, nil
 }
 
-// GenerateCertificateAuthorities get a map of wanted certificates and check If they exist in the existingSecretsMap based on the keys in the map. If they exist it get only the certificate from the corresponding
-// existing secret and makes a certificate Interface from the existing secret. If there is no existing secret contaning the wanted certificate, we make one certificate and with it we deploy in K8s cluster
-// a secret with that  certificate and then return the newly existing secret. The function returns a map of secrets contaning the wanted CA, a map with the wanted CA certificate and an error.
-func GenerateCertificateAuthorities(k8sClusterClient kubernetes.Interface, existingSecretsMap map[string]*corev1.Secret, wantedCertificateAuthorities map[string]*CertificateSecretConfig, namespace string) (map[string]*corev1.Secret, map[string]*Certificate, error) {
+// GenerateAndDeployCertificateAuthorities takes a map of wanted certificates and checks if they exist in the
+// existingSecretsMap based on the keys in the map. If they exist it loads the certificate from the corresponding
+// existing secret and makes a certificate Interface from the existing secret. If there is no existing secret containing
+// the wanted certificate, it generates the certificate and deploys a secret containing that certificate into the k8s
+// cluster. The function returns a map of secrets containing the wanted CAs and a map with the wanted CA certificates.
+func GenerateAndDeployCertificateAuthorities(k8sClusterClient kubernetes.Interface, existingSecretsMap map[string]*corev1.Secret, wantedCertificateAuthorities map[string]*CertificateSecretConfig, namespace string) (map[string]*corev1.Secret, map[string]*Certificate, error) {
+	errorList := &multierror.Error{
+		ErrorFormat: utilerrors.NewErrorFormatFuncWithPrefix("shoot secrets generation"),
+	}
+
+	generatedSecrets, certificateAuthorities, generateErrors := GenerateCertificateAuthorities(existingSecretsMap, wantedCertificateAuthorities, namespace)
+	errorList = multierror.Append(errorList, generateErrors)
+
+	for name, secret := range generatedSecrets {
+		if _, exists := existingSecretsMap[name]; exists {
+			continue
+		}
+
+		if err := k8sClusterClient.Client().Create(context.TODO(), secret); err != nil {
+			errorList = multierror.Append(fmt.Errorf("error deploying secret '%s/%s': %+v", namespace, name, err))
+		}
+	}
+
+	if errorList.Len() > 0 {
+		return generatedSecrets, certificateAuthorities, errorList
+	}
+
+	return generatedSecrets, certificateAuthorities, nil
+}
+
+// GenerateCertificateAuthorities takes a map of wanted certificates and checks if they exist in the
+// existingSecretsMap based on the keys in the map. If they exist it loads the certificate from the corresponding
+// existing secret and makes a certificate Interface from the existing secret. If there is no existing secret containing
+// the wanted certificate, it generates the certificate and a secret containing that certificate.
+// The function returns a map of secrets containing the wanted CAs and a map with the wanted CA certificates.
+func GenerateCertificateAuthorities(existingSecretsMap map[string]*corev1.Secret, wantedCertificateAuthorities map[string]*CertificateSecretConfig, namespace string) (map[string]*corev1.Secret, map[string]*Certificate, error) {
 	type caOutput struct {
 		secret      *corev1.Secret
 		certificate *Certificate
@@ -313,23 +345,25 @@ func GenerateCertificateAuthorities(k8sClusterClient kubernetes.Interface, exist
 		generatedSecrets       = map[string]*corev1.Secret{}
 		results                = make(chan *caOutput)
 		wg                     sync.WaitGroup
-		errorList              = []error{}
+		errorList              = &multierror.Error{
+			ErrorFormat: utilerrors.NewErrorFormatFuncWithPrefix("certificate authority generation"),
+		}
 	)
 
 	for name, config := range wantedCertificateAuthorities {
 		wg.Add(1)
 
 		if existingSecret, ok := existingSecretsMap[name]; !ok {
-			go func(config *CertificateSecretConfig) {
+			go func(name string, config *CertificateSecretConfig) {
 				defer wg.Done()
-				secret, certificate, err := generateCA(k8sClusterClient, config, namespace)
-				results <- &caOutput{secret, certificate, err}
-			}(config)
+				secret, certificate, err := generateCA(config, namespace)
+				results <- &caOutput{secret, certificate, errors.WithMessagef(err, "error generating certificate authority secret '%s/%s'", namespace, name)}
+			}(name, config)
 		} else {
 			go func(name string, existingSecret *corev1.Secret) {
 				defer wg.Done()
 				secret, certificate, err := loadCA(name, existingSecret)
-				results <- &caOutput{secret, certificate, err}
+				results <- &caOutput{secret, certificate, errors.WithMessagef(err, "error loading certificate authority secret '%s/%s'", namespace, name)}
 			}(name, existingSecret)
 		}
 	}
@@ -341,16 +375,17 @@ func GenerateCertificateAuthorities(k8sClusterClient kubernetes.Interface, exist
 
 	for out := range results {
 		if out.err != nil {
-			errorList = append(errorList, out.err)
+			errorList = multierror.Append(errorList, out.err)
 			continue
 		}
+
 		generatedSecrets[out.secret.Name] = out.secret
 		certificateAuthorities[out.secret.Name] = out.certificate
 	}
 
-	// Wait and check wether an error occurred during the parallel processing of the Secret creation.
-	if len(errorList) > 0 {
-		return nil, nil, fmt.Errorf("errors occurred during certificate authority generation: %+v", errorList)
+	// check whether an error occurred during the parallel processing of the Secret creation.
+	if errorList.Len() > 0 {
+		return nil, nil, errorList
 	}
 
 	return generatedSecrets, certificateAuthorities, nil

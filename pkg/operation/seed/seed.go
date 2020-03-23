@@ -46,7 +46,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/util/retry"
 	componentbaseconfig "k8s.io/component-base/config"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -250,7 +249,7 @@ func generateWantedSecrets(seed *Seed, certificateAuthorities map[string]*secret
 // deployCertificates deploys CA and TLS certificates inside the garden namespace
 // It takes a map[string]*corev1.Secret object which contains secrets that have already been deployed inside that namespace to avoid duplication errors.
 func deployCertificates(seed *Seed, k8sSeedClient kubernetes.Interface, existingSecretsMap map[string]*corev1.Secret) (map[string]*corev1.Secret, error) {
-	_, certificateAuthorities, err := secretsutils.GenerateCertificateAuthorities(k8sSeedClient, existingSecretsMap, wantedCertificateAuthorities, v1beta1constants.GardenNamespace)
+	_, certificateAuthorities, err := secretsutils.GenerateAndDeployCertificateAuthorities(k8sSeedClient, existingSecretsMap, wantedCertificateAuthorities, v1beta1constants.GardenNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -260,41 +259,9 @@ func deployCertificates(seed *Seed, k8sSeedClient kubernetes.Interface, existing
 		return nil, err
 	}
 
-	// Only necessary to renew certificates for Grafana, Kibana, Prometheus
-	// TODO: (timuthy) remove in future version.
-	var (
-		renewedLabel = "cert.gardener.cloud/renewed-endpoint"
-		browserCerts = sets.NewString(grafanaTLS, kibanaTLS, prometheusTLS)
-	)
-	for name, secret := range existingSecretsMap {
-		_, ok := secret.Labels[renewedLabel]
-		if browserCerts.Has(name) && !ok {
-			if err := k8sSeedClient.Client().Delete(context.TODO(), secret); client.IgnoreNotFound(err) != nil {
-				return nil, err
-			}
-			delete(existingSecretsMap, name)
-		}
-	}
-
-	secrets, err := secretsutils.GenerateClusterSecrets(context.TODO(), k8sSeedClient, existingSecretsMap, wantedSecretsList, v1beta1constants.GardenNamespace)
+	secrets, err := secretsutils.GenerateAndDeployClusterSecrets(context.TODO(), k8sSeedClient, existingSecretsMap, wantedSecretsList, v1beta1constants.GardenNamespace)
 	if err != nil {
 		return nil, err
-	}
-
-	// Only necessary to renew certificates for Grafana, Kibana, Prometheus
-	// TODO: (timuthy) remove in future version.
-	for name, secret := range secrets {
-		_, ok := secret.Labels[renewedLabel]
-		if browserCerts.Has(name) && !ok {
-			if secret.Labels == nil {
-				secret.Labels = make(map[string]string)
-			}
-			secret.Labels[renewedLabel] = "true"
-
-			if err := k8sSeedClient.Client().Update(context.TODO(), secret); err != nil {
-				return nil, err
-			}
-		}
 	}
 
 	return secrets, nil

@@ -19,31 +19,81 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gardener/gardener/pkg/client/kubernetes"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/gardener/gardener/pkg/client/kubernetes"
+	utilerrors "github.com/gardener/gardener/pkg/utils/errors"
 )
 
-// GenerateClusterSecrets try to deploy in the k8s cluster each secret in the wantedSecretsList. If the secret already exist it jumps to the next one.
-// The function returns a map with all of the successfully deployed wanted secrets plus those already deployed (only from the wantedSecretsList).
-func GenerateClusterSecrets(ctx context.Context, k8sClusterClient kubernetes.Interface, existingSecretsMap map[string]*corev1.Secret, wantedSecretsList []ConfigInterface, namespace string) (map[string]*corev1.Secret, error) {
+// GenerateAndDeployClusterSecrets tries to generate and deploy each secret in the wantedSecretsList to the k8s cluster.
+// If the secret already exist it jumps to the next one. The function returns a map with all of the successfully deployed
+// wanted secrets plus those already deployed (only from the wantedSecretsList).
+func GenerateAndDeployClusterSecrets(ctx context.Context, k8sClusterClient kubernetes.Interface, existingSecretsMap map[string]*corev1.Secret, wantedSecretsList []ConfigInterface, namespace string) (map[string]*corev1.Secret, error) {
+	errorList := &multierror.Error{
+		ErrorFormat: utilerrors.NewErrorFormatFuncWithPrefix("cluster secrets generation and deployment"),
+	}
+
+	clusterSecrets, generateErrors := GenerateClusterSecrets(existingSecretsMap, wantedSecretsList, namespace)
+	errorList = multierror.Append(errorList, generateErrors)
+
+	var (
+		wg      sync.WaitGroup
+		errChan = make(chan error)
+	)
+
+	for name, secret := range clusterSecrets {
+		if _, exists := existingSecretsMap[name]; exists {
+			continue
+		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			if err := k8sClusterClient.Client().Create(ctx, secret); err != nil {
+				errChan <- fmt.Errorf("error deploying secret '%s/%s': %+v", namespace, name, err)
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	for err := range errChan {
+		errorList = multierror.Append(err)
+	}
+
+	return clusterSecrets, errorList.ErrorOrNil()
+}
+
+// GenerateClusterSecrets generates all secrets in the wantedSecretsList. If the secret already exists it takes the existing
+// secret instead of generating a new one. The function returns a map with all of the newly generated secrets plus those
+// already existing (only from the wantedSecretsList).
+func GenerateClusterSecrets(existingSecretsMap map[string]*corev1.Secret, wantedSecretsList []ConfigInterface, namespace string) (map[string]*corev1.Secret, error) {
 	type secretOutput struct {
 		secret *corev1.Secret
 		err    error
 	}
 
 	var (
-		results                = make(chan *secretOutput)
-		deployedClusterSecrets = map[string]*corev1.Secret{}
-		wg                     sync.WaitGroup
-		errorList              = []error{}
+		results        = make(chan *secretOutput)
+		clusterSecrets = map[string]*corev1.Secret{}
+		wg             sync.WaitGroup
+		errorList      = &multierror.Error{
+			ErrorFormat: utilerrors.NewErrorFormatFuncWithPrefix("cluster secrets generation"),
+		}
 	)
 
 	for _, s := range wantedSecretsList {
 		name := s.GetName()
 
 		if existingSecret, ok := existingSecretsMap[name]; ok {
-			deployedClusterSecrets[name] = existingSecret
+			clusterSecrets[name] = existingSecret
 			continue
 		}
 
@@ -53,7 +103,7 @@ func GenerateClusterSecrets(ctx context.Context, k8sClusterClient kubernetes.Int
 
 			obj, err := s.Generate()
 			if err != nil {
-				results <- &secretOutput{err: err}
+				results <- &secretOutput{err: errors.WithMessagef(err, "error generating secret '%s/%s'", namespace, name)}
 				return
 			}
 
@@ -70,8 +120,7 @@ func GenerateClusterSecrets(ctx context.Context, k8sClusterClient kubernetes.Int
 				Type: secretType,
 				Data: obj.SecretData(),
 			}
-			err = k8sClusterClient.Client().Create(ctx, secret)
-			results <- &secretOutput{secret: secret, err: err}
+			results <- &secretOutput{secret: secret}
 		}(s)
 	}
 
@@ -82,17 +131,12 @@ func GenerateClusterSecrets(ctx context.Context, k8sClusterClient kubernetes.Int
 
 	for out := range results {
 		if out.err != nil {
-			errorList = append(errorList, out.err)
+			errorList = multierror.Append(errorList, out.err)
 			continue
 		}
 
-		deployedClusterSecrets[out.secret.Name] = out.secret
+		clusterSecrets[out.secret.Name] = out.secret
 	}
 
-	// Wait and check whether an error occurred during the parallel processing of the Secret creation.
-	if len(errorList) > 0 {
-		return deployedClusterSecrets, fmt.Errorf("errors occurred during shoot secrets generation: %+v", errorList)
-	}
-
-	return deployedClusterSecrets, nil
+	return clusterSecrets, errorList.ErrorOrNil()
 }

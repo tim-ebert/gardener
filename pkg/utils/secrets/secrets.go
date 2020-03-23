@@ -45,15 +45,15 @@ func (s *Secrets) Deploy(
 		return nil, err
 	}
 
-	// Generate CAs
-	_, cas, err := GenerateCertificateAuthorities(gcs, existingSecrets, s.CertificateSecretConfigs, namespace)
+	// Generate and deploy CAs
+	_, cas, err := GenerateAndDeployCertificateAuthorities(gcs, existingSecrets, s.CertificateSecretConfigs, namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not generate CA secrets in namespace '%s'", namespace)
 	}
 
-	// Generate cluster secrets
+	// Generate and deploy cluster secrets
 	secretConfigs := s.SecretConfigsFunc(cas, namespace)
-	clusterSecrets, err := GenerateClusterSecrets(ctx, gcs, existingSecrets, secretConfigs, namespace)
+	clusterSecrets, err := GenerateAndDeployClusterSecrets(ctx, gcs, existingSecrets, secretConfigs, namespace)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not generate cluster secrets in namespace '%s'", namespace)
 	}

@@ -923,7 +923,7 @@ func (b *Botanist) fetchExistingSecrets(ctx context.Context) (map[string]*corev1
 }
 
 func (b *Botanist) generateCertificateAuthorities(existingSecretsMap map[string]*corev1.Secret) (map[string]*secrets.Certificate, error) {
-	generatedSecrets, certificateAuthorities, err := secrets.GenerateCertificateAuthorities(b.K8sSeedClient, existingSecretsMap, wantedCertificateAuthorities, b.Shoot.SeedNamespace)
+	generatedSecrets, certificateAuthorities, err := secrets.GenerateAndDeployCertificateAuthorities(b.K8sSeedClient, existingSecretsMap, wantedCertificateAuthorities, b.Shoot.SeedNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,7 +1061,7 @@ func (b *Botanist) storeAPIServerHealthCheckToken(staticToken *secrets.StaticTok
 }
 
 func (b *Botanist) generateShootSecrets(ctx context.Context, existingSecretsMap map[string]*corev1.Secret, wantedSecretsList []secrets.ConfigInterface) error {
-	deployedClusterSecrets, err := secrets.GenerateClusterSecrets(ctx, b.K8sSeedClient, existingSecretsMap, wantedSecretsList, b.Shoot.SeedNamespace)
+	deployedClusterSecrets, err := secrets.GenerateAndDeployClusterSecrets(ctx, b.K8sSeedClient, existingSecretsMap, wantedSecretsList, b.Shoot.SeedNamespace)
 	if err != nil {
 		return err
 	}
