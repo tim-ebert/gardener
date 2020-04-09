@@ -15,6 +15,7 @@
 package framework
 
 import (
+	"context"
 	"fmt"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
@@ -25,6 +26,7 @@ import (
 	"os"
 	"reflect"
 	"sigs.k8s.io/yaml"
+	"time"
 )
 
 // Must errors with `GinkgoT().Fatal` if the error is non-nil.
@@ -32,6 +34,10 @@ func Must(err error) {
 	if err != nil {
 		ginkgo.GinkgoT().Fatal(err)
 	}
+}
+
+func WithTimeout(f func(context.Context), timeout time.Duration) {
+	contextify(f, timeout)()
 }
 
 func checkPtr(v reflect.Value) error {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	gardenerutils "github.com/gardener/gardener/pkg/utils"
 	"github.com/gardener/gardener/pkg/utils/kubernetes/health"
@@ -241,6 +242,19 @@ func ShootCreationCompleted(newShoot *gardencorev1beta1.Shoot) bool {
 				return false
 			}
 		}
+	}
+
+	return true
+}
+
+// SeedReady checks if a given Seed is ready
+func SeedReady(seed *gardencorev1beta1.Seed) bool {
+	gardenletReadyCondition := gardencorev1beta1helper.GetCondition(seed.Status.Conditions, gardencorev1beta1.SeedGardenletReady)
+	seedBootstrappedCondition := gardencorev1beta1helper.GetCondition(seed.Status.Conditions, gardencorev1beta1.SeedBootstrapped)
+
+	if (gardenletReadyCondition == nil || gardenletReadyCondition.Status != gardencorev1beta1.ConditionTrue) ||
+		(seedBootstrappedCondition == nil || seedBootstrappedCondition.Status != gardencorev1beta1.ConditionTrue) {
+		return false
 	}
 
 	return true

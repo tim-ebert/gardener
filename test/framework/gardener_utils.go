@@ -17,6 +17,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	gardencorev1beta1helper "github.com/gardener/gardener/pkg/apis/core/v1beta1/helper"
 	"time"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -50,6 +51,46 @@ func (f *GardenerFramework) GetSeed(ctx context.Context, seedName string) (*gard
 		return nil, nil, errors.Wrap(err, "could not construct Seed client")
 	}
 	return seed, seedClient, nil
+}
+
+// WaitForSeedGardenletVersionToBeUpdated waits for the Seed's Gardenlet version to be updated and the Seed to be ready
+func (f *GardenerFramework) WaitForSeedGardenletVersionToBeUpdated(ctx context.Context, seed *gardencorev1beta1.Seed, timeout time.Duration) error {
+	currentVersion := ""
+	if seed.Status.Gardener != nil {
+		currentVersion = seed.Status.Gardener.Version
+	}
+
+	return retry.UntilTimeout(ctx, 30*time.Second, timeout, func(ctx context.Context) (done bool, err error) {
+		newSeed := &gardencorev1beta1.Seed{}
+		err = f.GardenClient.Client().Get(ctx, client.ObjectKey{Name: seed.Name}, newSeed)
+		if err != nil {
+			f.Logger.Infof("Error while waiting for the Seed's gardenlet version to be updated: %s", err.Error())
+			return retry.MinorError(err)
+		}
+		*seed = *newSeed
+
+		if newSeed.Status.Gardener != nil && newSeed.Status.Gardener.Version != currentVersion && SeedReady(seed) {
+			f.Logger.Infof("Done waiting for the Seed's gardenlet version to be updated. Seed: %s, new version: %s", seed.Name, newSeed.Status.Gardener.Version)
+			return retry.Ok()
+		}
+
+		newVersion := "<unknown>"
+		if newSeed.Status.Gardener != nil {
+			newVersion = newSeed.Status.Gardener.Version
+		}
+		f.Logger.Infof("Waiting for the Seed's gardenlet version to be updated. Seed: %s, current version: %s", seed.Name, newVersion)
+
+		gardenletReadyCondition := gardencorev1beta1helper.GetCondition(seed.Status.Conditions, gardencorev1beta1.SeedGardenletReady)
+		if gardenletReadyCondition != nil {
+			f.Logger.Infof("Seed Condition %q: Status=%q, Reason=%q, Message=%q\n", gardencorev1beta1.SeedGardenletReady, gardenletReadyCondition.Status, gardenletReadyCondition.Reason, gardenletReadyCondition.Message)
+		}
+		seedBootstrappedCondition := gardencorev1beta1helper.GetCondition(seed.Status.Conditions, gardencorev1beta1.SeedBootstrapped)
+		if seedBootstrappedCondition != nil {
+			f.Logger.Infof("Seed Condition %q: Status=%q, Reason=%q, Message=%q\n", gardencorev1beta1.SeedBootstrapped, seedBootstrappedCondition.Status, seedBootstrappedCondition.Reason, seedBootstrappedCondition.Message)
+		}
+
+		return retry.MinorError(fmt.Errorf("shoot %q was not successfully reconciled", seed.Name))
+	})
 }
 
 // GetShoot gets the test shoot
