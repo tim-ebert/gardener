@@ -8,7 +8,7 @@ metadata:
     role: logging
     garden.sapcloud.io/role: logging
 spec:
-  schedule: {{ .Values.curator.hourly.schedule }}
+  schedule: {{ .Values.curator.hourly.schedule | quote }}
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
@@ -56,12 +56,12 @@ metadata:
     role: logging
     garden.sapcloud.io/role: logging
 spec:
-  schedule: {{ .Values.curator.daily.schedule }}
+  schedule: {{ .Values.curator.daily.schedule | quote }}
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 120
-  suspend:  {{ .Values.curator.daily.suspend }}
+  suspend: {{ .Values.curator.daily.suspend }}
   jobTemplate:
     spec:
       template:

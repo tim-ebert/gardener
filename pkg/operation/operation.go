@@ -89,10 +89,7 @@ func newOperation(
 		disableDNS bool
 	)
 	if seedName != nil {
-		seedObj, err = seed.NewFromName(k8sGardenClient, k8sGardenCoreInformers, *seedName)
-		if err != nil {
-			return nil, err
-		}
+		seedObj = seed.NewFromName(k8sGardenCoreInformers, *seedName)
 		disableDNS = gardencorev1beta1helper.TaintsHave(seedObj.Info.Spec.Taints, gardencorev1beta1.SeedTaintDisableDNS)
 	}
 
@@ -150,27 +147,17 @@ func shootWantsAlertmanager(shoot *gardencorev1beta1.Shoot, secrets map[string]*
 // cluster which contains a Kubeconfig that can be used to authenticate against the Seed cluster. With it,
 // a Kubernetes client as well as a Chart renderer for the Seed cluster will be initialized and attached to
 // the already existing Operation object.
-func (o *Operation) InitializeSeedClients() error {
+func (o *Operation) InitializeSeedClients(ctx context.Context) error {
 	if o.K8sSeedClient != nil && o.ChartApplierSeed != nil {
 		return nil
 	}
 
-	k8sSeedClient, err := seed.GetSeedClient(context.TODO(), o.K8sGardenClient.Client(), o.Config.SeedClientConnection.ClientConnectionConfiguration, o.Config.SeedSelector == nil, o.Seed.Info.Name)
-	if err != nil {
-		return err
-	}
-	o.K8sSeedClient = k8sSeedClient
-
-	renderer, err := chartrenderer.NewForConfig(k8sSeedClient.RESTConfig())
-	if err != nil {
-		return err
-	}
-	applier, err := kubernetes.NewApplierForConfig(k8sSeedClient.RESTConfig())
-	if err != nil {
+	if err := o.Seed.InitializeClients(ctx, o.K8sGardenClient.Client(), o.Config.SeedClientConnection.ClientConnectionConfiguration, o.Config.SeedSelector == nil); err != nil {
 		return err
 	}
 
-	o.ChartApplierSeed = kubernetes.NewChartApplier(renderer, applier)
+	o.K8sSeedClient = o.Seed.K8sClient
+	o.ChartApplierSeed = o.Seed.ChartApplier
 	return nil
 }
 
@@ -382,7 +369,7 @@ func (o *Operation) InjectShootShootImages(values map[string]interface{}, names 
 // SyncClusterResourceToSeed creates or updates the `Cluster` extension resource for the shoot in the seed cluster.
 // It contains the shoot, seed, and cloudprofile specification.
 func (o *Operation) SyncClusterResourceToSeed(ctx context.Context) error {
-	if err := o.InitializeSeedClients(); err != nil {
+	if err := o.InitializeSeedClients(ctx); err != nil {
 		o.Logger.Errorf("Could not initialize a new Kubernetes client for the seed cluster: %s", err.Error())
 		return err
 	}
@@ -449,7 +436,7 @@ func (o *Operation) EnsureShootStateExists(ctx context.Context) error {
 
 // DeleteClusterResourceFromSeed deletes the `Cluster` extension resource for the shoot in the seed cluster.
 func (o *Operation) DeleteClusterResourceFromSeed(ctx context.Context) error {
-	if err := o.InitializeSeedClients(); err != nil {
+	if err := o.InitializeSeedClients(ctx); err != nil {
 		o.Logger.Errorf("Could not initialize a new Kubernetes client for the seed cluster: %s", err.Error())
 		return err
 	}

@@ -1,4 +1,4 @@
-{{- if .Values.reserveExcessCapacity }}
+{{- if .Values.reserveExcessCapacity.enabled }}
 apiVersion: {{ include "priorityclassversion" . }}
 kind: PriorityClass
 metadata:

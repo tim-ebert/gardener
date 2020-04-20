@@ -16,8 +16,12 @@ package kubernetes
 
 import (
 	"errors"
+	"fmt"
 
+	"k8s.io/client-go/discovery"
+	memcache "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	baseconfig "k8s.io/component-base/config"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -60,6 +64,25 @@ func WithClientConnectionOptions(cfg baseconfig.ClientConnectionConfiguration) C
 func WithClientOptions(opt client.Options) ConfigFunc {
 	return func(config *config) error {
 		config.clientOptions = opt
+		return nil
+	}
+}
+
+// WithDeferredDiscoveryRESTMapper returns a ConfigFunc that adds a
+//sets the passed Options on the config object.
+func WithDeferredDiscoveryRESTMapper() ConfigFunc {
+	return func(config *config) error {
+		if config.restConfig == nil {
+			return fmt.Errorf("failed to add a DeferredDiscoveryRESTMapper to config, config.restConfig is not yet set")
+		}
+
+		discoveryClient, err := discovery.NewDiscoveryClientForConfig(config.restConfig)
+		if err != nil {
+			return fmt.Errorf("failed to add a DeferredDiscoveryRESTMapper to config, failed to create DiscoveryClient: %v", err)
+		}
+
+		restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memcache.NewMemCacheClient(discoveryClient))
+		config.clientOptions.Mapper = restMapper
 		return nil
 	}
 }

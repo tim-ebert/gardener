@@ -152,9 +152,6 @@ const (
 	// GardenRoleAlerting is the value of GardenRole key indicating type 'alerting'.
 	GardenRoleAlerting = "alerting"
 
-	// GardenRoleHvpa is the value of GardenRole key indicating type 'hvpa'.
-	GardenRoleHvpa = "hvpa"
-
 	// GardenCreatedBy is the key for an annotation of a Shoot cluster whose value indicates contains the username
 	// of the user that created the resource.
 	GardenCreatedBy = "gardener.cloud/created-by"
@@ -230,6 +227,15 @@ const (
 
 	// KibanaAdminIngressCredentialsSecretName is the name of the secret which holds admin credentials.
 	KibanaAdminIngressCredentialsSecretName = "logging-ingress-credentials"
+
+	// SeedLoggingIngressCredentialsSecretName is the name of the secret which holds credentials for the Seed's logging ingress.
+	SeedLoggingIngressCredentialsSecretName = "seed-logging-ingress-credentials"
+
+	// SeedMonitoringIngressCredentialsSecretName is the name of the secret which holds credentials for the Seed's monitoring ingress.
+	SeedMonitoringIngressCredentialsSecretName = "seed-monitoring-ingress-credentials"
+
+	// FluentdCredentialsSecretName is the name of the secret which holds credentials for the Seed's fluentd StatefulSet.
+	FluentdCredentialsSecretName = "fluentd-es-sg-credentials"
 
 	// KubecfgUsername is the username for the token used for the kubeconfig the shoot.
 	KubecfgUsername = "system:cluster-admin"

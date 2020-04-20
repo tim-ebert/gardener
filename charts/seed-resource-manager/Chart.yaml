@@ -1,0 +1,4 @@
+apiVersion: v1
+description: A helm chart for deploying the central gardener-resource-manager to a Seed
+name: seed-resource-manager
+version: 0.1.0

@@ -10,7 +10,7 @@ require (
 	github.com/gardener/etcd-druid v0.1.12
 	github.com/gardener/external-dns-management v0.7.7
 	github.com/gardener/gardener-resource-manager v0.10.0
-	github.com/gardener/hvpa-controller v0.0.0-20191014062307-fad3bdf06a25
+	github.com/gardener/hvpa-controller v0.2.5
 	github.com/gardener/machine-controller-manager v0.27.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
@@ -63,6 +63,7 @@ require (
 )
 
 replace (
+	github.com/gardener/gardener-resource-manager => ../gardener-resource-manager
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 	k8s.io/api => k8s.io/api v0.16.8 // 1.16.8
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.16.8 // 1.16.8

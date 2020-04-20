@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardencoreinformers "github.com/gardener/gardener/pkg/client/core/informers/externalversions"
@@ -36,7 +38,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -48,9 +49,12 @@ type Controller struct {
 	k8sGardenClient        kubernetes.Interface
 	k8sGardenCoreInformers gardencoreinformers.SharedInformerFactory
 
-	config *config.GardenletConfiguration
+	config                *config.GardenletConfiguration
+	secrets               map[string]*corev1.Secret
+	imageVector           imagevector.ImageVector
+	componentImageVectors imagevector.ComponentImageVectors
+	identity              *gardencorev1beta1.Gardener
 
-	control               ControlInterface
 	heartbeatControl      HeartbeatControlInterface
 	extensionCheckControl ExtensionCheckControlInterface
 
@@ -77,7 +81,6 @@ type Controller struct {
 func NewSeedController(
 	k8sGardenClient kubernetes.Interface,
 	gardenCoreInformerFactory gardencoreinformers.SharedInformerFactory,
-	kubeInformerFactory kubeinformers.SharedInformerFactory,
 	secrets map[string]*corev1.Secret,
 	imageVector imagevector.ImageVector,
 	componentImageVectors imagevector.ComponentImageVectors,
@@ -87,13 +90,11 @@ func NewSeedController(
 ) *Controller {
 	var (
 		gardenCoreV1beta1Informer = gardenCoreInformerFactory.Core().V1beta1()
-		corev1Informer            = kubeInformerFactory.Core().V1()
 
 		controllerInstallationInformer = gardenCoreV1beta1Informer.ControllerInstallations()
 		seedInformer                   = gardenCoreV1beta1Informer.Seeds()
 
 		controllerInstallationLister = controllerInstallationInformer.Lister()
-		secretLister                 = corev1Informer.Secrets().Lister()
 		seedLister                   = seedInformer.Lister()
 		shootLister                  = gardenCoreV1beta1Informer.Shoots().Lister()
 	)
@@ -101,10 +102,13 @@ func NewSeedController(
 	seedController := &Controller{
 		k8sGardenClient:         k8sGardenClient,
 		k8sGardenCoreInformers:  gardenCoreInformerFactory,
-		control:                 NewDefaultControl(k8sGardenClient, gardenCoreInformerFactory, secrets, imageVector, componentImageVectors, identity, recorder, config, secretLister, shootLister),
 		heartbeatControl:        NewDefaultHeartbeatControl(k8sGardenClient, gardenCoreV1beta1Informer, identity, config),
 		extensionCheckControl:   NewDefaultExtensionCheckControl(k8sGardenClient.GardenCore(), controllerInstallationLister, metav1.Now),
 		config:                  config,
+		secrets:                 secrets,
+		imageVector:             imageVector,
+		componentImageVectors:   componentImageVectors,
+		identity:                identity,
 		recorder:                recorder,
 		seedLister:              seedLister,
 		seedQueue:               workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "seed"),
@@ -179,7 +183,7 @@ func (c *Controller) Run(ctx context.Context, workers int) {
 	}
 
 	for i := 0; i < workers; i++ {
-		controllerutils.DeprecatedCreateWorker(ctx, c.seedQueue, "Seed", c.reconcileSeedKey, &waitGroup, c.workerCh)
+		controllerutils.CreateWorker(ctx, c.seedQueue, "Seed", reconcile.Func(c.reconcileSeedRequest), &waitGroup, c.workerCh)
 		controllerutils.DeprecatedCreateWorker(ctx, c.seedHeartbeatQueue, "Seed Heartbeat", c.reconcileSeedHeartbeatKey, &waitGroup, c.workerCh)
 		controllerutils.DeprecatedCreateWorker(ctx, c.seedExtensionCheckQueue, "Seed Extension Check", c.reconcileSeedExtensionCheckKey, &waitGroup, c.workerCh)
 	}

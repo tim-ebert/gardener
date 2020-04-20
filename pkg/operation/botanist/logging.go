@@ -88,7 +88,7 @@ func (b *Botanist) DeploySeedLogging(ctx context.Context) error {
 	ct := b.Shoot.Info.CreationTimestamp.Time
 
 	sgFluentdSecret := &corev1.Secret{}
-	if err = b.K8sSeedClient.Client().Get(ctx, kutil.Key(v1beta1constants.GardenNamespace, "fluentd-es-sg-credentials"), sgFluentdSecret); err != nil {
+	if err = b.K8sSeedClient.Client().Get(ctx, kutil.Key(v1beta1constants.GardenNamespace, common.FluentdCredentialsSecretName), sgFluentdSecret); err != nil {
 		return err
 	}
 

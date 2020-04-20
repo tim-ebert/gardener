@@ -1,10 +1,17 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hvpa-controller
+  namespace: garden
+  labels:
+    {{- toYaml .Values.labels | nindent 4 }}
 ---
 apiVersion: {{ include "rbacversion" . }}
 kind: ClusterRole
 metadata:
   name: system:hvpa-controller
   labels:
-{{ toYaml .Values.labels | indent 4 }}
+    {{- toYaml .Values.labels | nindent 4 }}
 rules:
 - apiGroups:
   - ""
@@ -98,7 +105,7 @@ kind: ClusterRoleBinding
 metadata:
   name: hvpa-controller-rolebinding
   labels:
-{{ toYaml .Values.labels | indent 4 }}
+    {{- toYaml .Values.labels | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

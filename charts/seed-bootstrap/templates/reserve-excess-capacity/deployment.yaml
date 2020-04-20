@@ -1,4 +1,4 @@
-{{- if .Values.reserveExcessCapacity }}
+{{- if .Values.reserveExcessCapacity.enabled }}
 apiVersion: {{ include "deploymentversion" . }}
 kind: Deployment
 metadata:
@@ -9,7 +9,7 @@ metadata:
     role: reserve-excess-capacity
 spec:
   revisionHistoryLimit: 0
-  replicas: {{ index .Values.replicas "reserve-excess-capacity" }}
+  replicas: {{ .Values.reserveExcessCapacity.replicas }}
   selector:
     matchLabels:
       app: kubernetes

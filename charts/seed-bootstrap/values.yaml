@@ -1,5 +1,19 @@
 cloudProvider: aws
 
+# map with all seed secrets (e.g. ca-seed, grafana-tls, ...)
+secrets:
+  ca-seed:
+    type: Opaque
+    data:
+      ca.crt: Zm9v
+      ca.key: YmFy
+#  grafana-tls:
+#    type: kubernetes.io/tls
+#    data:
+#      ca.crt: "<base64 encoded ca.crt...>"
+#      tls.crt: "<base64 encoded tls.crt...>"
+#      tls.key: "<base64 encoded tls.key...>"
+
 prometheus:
   port: 9090
   storage: 10Gi
@@ -132,15 +146,19 @@ allowedMetrics:
   - hvpa_status_blocked_hpa_desired_replicas
   - hvpa_status_blocked_vpa_recommendation
 
+monitoring:
+  ingress:
+    # base64 encoded auth secret for Seed's aggregate-prometheus and grafana ingress
+    basicAuth: YWRtaW46JGFwcjEkSWRSaVM5c3MkR3U1MHMxaGUwL2Z6Tzh2elE4S1BEMQ==
+    # base64 encoded secret data containing the credentials for Seed's aggregate-prometheus and grafana ingress
+    credentials:
+      basic_auth.csv: YWRtaW46JGFwcjEkSWRSaVM5c3MkR3U1MHMxaGUwL2Z6Tzh2elE4S1BEMQ==
+      password: YWRtaW4=
+      username: YWRtaW4=
 
-ingress:
-  # admin : admin base64 encoded
-  basicAuthSecret: YWRtaW46JGFwcjEkSWRSaVM5c3MkR3U1MHMxaGUwL2Z6Tzh2elE4S1BEMQ==
-
-reserveExcessCapacity: true
-
-replicas:
-  reserve-excess-capacity: 0
+reserveExcessCapacity:
+  enabled: true
+  replicas: 0
 
 prometheusPort: 9090
 
@@ -153,7 +171,6 @@ global:
     elasticsearch-oss: image-repository:image-tag
     elasticsearch-searchguard-oss: image-repository:image-tag
     fluentd-es: image-repository:image-tag
-    gardener-resource-manager: image-repository:image-tag
     gardener-seed-admission-controller: image-repository:image-tag
     grafana: image-repository:image-tag
     kibana-oss: image-repository:image-tag
@@ -192,21 +209,6 @@ hvpa:
 
 global-network-policies:
   denyAll: false
-
-gardenerResourceManager:
-  resources:
-    requests:
-      cpu: 23m
-      memory: 47Mi
-    limits:
-      cpu: 400m
-      memory: 512Mi
-  replicas: 1
-  resourceClass: seed
-  syncPeriod: 1h0m0s
-  healthSyncPeriod: 1m0s
-  concurrentSyncs: 20
-  podAnnotations: {}
 
 gardenerSeedAdmissionController:
   resources:

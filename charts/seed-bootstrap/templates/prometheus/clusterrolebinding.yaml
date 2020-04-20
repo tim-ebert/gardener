@@ -5,7 +5,6 @@ metadata:
     app: prometheus
     role: monitoring
   name: prometheus-seed
-  namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

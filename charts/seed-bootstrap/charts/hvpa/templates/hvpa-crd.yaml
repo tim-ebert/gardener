@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: hvpas.autoscaling.k8s.io
   labels:
-{{ toYaml .Values.labels | indent 4 }}
+{{- toYaml .Values.labels | nindent 4 }}
 spec:
   group: autoscaling.k8s.io
   names:
@@ -1197,9 +1197,3 @@ spec:
   - name: v1alpha1
     served: true
     storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

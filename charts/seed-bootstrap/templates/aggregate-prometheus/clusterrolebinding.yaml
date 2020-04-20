@@ -5,7 +5,6 @@ metadata:
     app: aggregate-prometheus
     role: monitoring
   name: aggregate-prometheus
-  namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

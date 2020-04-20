@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/gardener/pkg/utils/imagevector"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -176,6 +177,20 @@ func ImageMapToValues(m map[string]*imagevector.Image) map[string]interface{} {
 		out[k] = v.String()
 	}
 	return out
+}
+
+// SecretMapToValues transforms the given secretMap to chart Values (mapping secret name to secret type and data)
+func SecretMapToValues(secrets map[string]*corev1.Secret) map[string]interface{} {
+	secretsMap := make(map[string]interface{}, len(secrets))
+
+	for name, secret := range secrets {
+		secretsMap[name] = map[string]interface{}{
+			"type": secret.Type,
+			"data": secret.Data,
+		}
+	}
+
+	return secretsMap
 }
 
 // InjectImages finds the images with the given names and opts, makes a shallow copy of the given

@@ -122,6 +122,7 @@ func (c *Controller) checkSeedAndSyncClusterResource(shoot *gardencorev1beta1.Sh
 }
 
 func (c *Controller) reconcileShootRequest(req reconcile.Request) (reconcile.Result, error) {
+	//return reconcile.Result{}, nil
 	log := logger.NewShootLogger(logger.Logger, req.Name, req.Namespace).WithField("operation", "reconcile")
 
 	shoot, err := c.shootLister.Shoots(req.Namespace).Get(req.Name)

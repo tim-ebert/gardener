@@ -1,0 +1,13 @@
+apiVersion: {{ include "rbacversion" . }}
+kind: ClusterRole
+metadata:
+  name: gardener-resource-manager-seed
+  labels:
+    app: gardener-resource-manager
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'

@@ -53,7 +53,7 @@ func New(o *operation.Operation) (*Botanist, error) {
 		}
 	}
 
-	if err := b.InitializeSeedClients(); err != nil {
+	if err := b.InitializeSeedClients(context.TODO()); err != nil {
 		return nil, err
 	}
 

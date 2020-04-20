@@ -15,14 +15,21 @@
 package seed
 
 import (
-	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
+	"github.com/gardener/gardener/pkg/chartrenderer"
+	"github.com/gardener/gardener/pkg/client/kubernetes"
 )
 
 // Seed is an object containing information about a Seed cluster.
 type Seed struct {
 	Info   *gardencorev1beta1.Seed
 	Secret *corev1.Secret
+
+	K8sClient     kubernetes.Interface
+	ChartRenderer chartrenderer.Interface
+	ChartApplier  kubernetes.ChartApplier
 
 	reserveExcessCapacity bool
 }

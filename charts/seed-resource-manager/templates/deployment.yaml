@@ -24,7 +24,7 @@ spec:
       serviceAccountName: gardener-resource-manager
       containers:
       - name: gardener-resource-manager
-        image: {{ index .Values.global.images "gardener-resource-manager" }}
+        image: {{ index .Values.images "gardener-resource-manager" }}
         imagePullPolicy: IfNotPresent
         command:
         - /gardener-resource-manager
