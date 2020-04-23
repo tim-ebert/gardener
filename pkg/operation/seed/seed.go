@@ -403,7 +403,7 @@ func BootstrapCluster(ctx context.Context, seed *Seed, logger logrus.FieldLogger
 			WithInjectedLabels(map[string]string{ManagedResourceLabelKeyOrigin: ManagedResourceLabelValueGardener}).
 			WithSecretRef(chartNameSeedBootstrap).
 			WithClass(v1beta1constants.SeedResourceManagerClass).
-			Delete
+			DeletePersistentVolumeClaims(true).
 			Reconcile(ctx)
 	}); err != nil {
 		return fmt.Errorf("failed to reconcile ManagedResource '%s/%s': %+v", v1beta1constants.GardenNamespace, chartNameSeedBootstrap, err)

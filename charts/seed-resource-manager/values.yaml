@@ -9,7 +9,7 @@ gardenerResourceManager:
     limits:
       cpu: 400m
       memory: 512Mi
-  replicas: 1
+  replicas: 0
   resourceClass: seed
   syncPeriod: 1h0m0s
   healthSyncPeriod: 1m0s
