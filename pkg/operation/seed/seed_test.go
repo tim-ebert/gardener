@@ -20,7 +20,6 @@ import (
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	mockclient "github.com/gardener/gardener/pkg/mock/controller-runtime/client"
-	mock "github.com/gardener/gardener/pkg/mock/gardener/client/kubernetes"
 	"github.com/gardener/gardener/pkg/operation/common"
 	. "github.com/gardener/gardener/pkg/operation/seed"
 
@@ -34,14 +33,12 @@ import (
 
 var _ = Describe("seed", func() {
 	var (
-		ctrl           *gomock.Controller
-		restMockClient *mock.MockInterface
-		runtimeClient  *mockclient.MockClient
+		ctrl          *gomock.Controller
+		runtimeClient *mockclient.MockClient
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		restMockClient = mock.NewMockInterface(ctrl)
 		runtimeClient = mockclient.NewMockClient(ctrl)
 	})
 
