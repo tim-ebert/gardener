@@ -1,10 +1,9 @@
----
 apiVersion: {{ include "deploymentversion" . }}
 kind: Deployment
 metadata:
   labels:
     app: vpa-exporter
-{{ toYaml .Values.labels | indent 4 }}
+    {{- toYaml .Values.labels | nindent 4 }}
   name: vpa-exporter
   namespace: {{ .Release.Namespace }}
 spec:
@@ -39,22 +38,3 @@ spec:
             cpu: 500m
             memory: 1Gi
 {{ end }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vpa-exporter
-  namespace: {{ .Release.Namespace }}
-  labels:
-    app: vpa-exporter
-{{ toYaml .Values.labels | indent 4 }}
-spec:
-  type: ClusterIP
-  sessionAffinity: None
-  selector:
-    app: vpa-exporter
-  ports:
-  - name: metrics
-    protocol: TCP
-    port: 9570
-    targetPort: 9570

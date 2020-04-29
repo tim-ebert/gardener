@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vpa-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: vpa-exporter
+    {{- toYaml .Values.labels | nindent 4 }}
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  selector:
+    app: vpa-exporter
+  ports:
+  - name: metrics
+    protocol: TCP
+    port: 9570
+    targetPort: 9570
