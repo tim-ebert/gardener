@@ -17,4 +17,4 @@ set -e
 
 echo "> Test"
 
-GO111MODULE=on ginkgo -mod=vendor $@
+GO111MODULE=on ginkgo -mod=vendor -p $@
