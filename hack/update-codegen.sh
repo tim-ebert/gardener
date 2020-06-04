@@ -15,7 +15,6 @@
 # limitations under the License.
 
 set -o errexit
-set -o nounset
 set -o pipefail
 
 rm -f ${GOPATH}/bin/*-gen
@@ -23,9 +22,40 @@ rm -f ${GOPATH}/bin/*-gen
 CURRENT_DIR=$(dirname $0)
 PROJECT_ROOT="${CURRENT_DIR}"/..
 
+pids=()
+
+cancel () {
+  for pid in ${pids[@]} ; do
+    kill -0 $pid 2>/dev/null || continue
+
+    echo "Killing pid $pid"
+    kill -TERM $pid || true
+  done
+}
+
+trap cancel INT TERM
+
+run () {
+  echo "Running $2"
+  $@ &
+  pids=($pids $!)
+}
+
+sync () {
+  while sleep 1; do
+    for pid in ${pids[@]} ; do
+      if kill -0 $pid 2>/dev/null ; then
+        echo "pid $pid still running"
+        continue 2
+      fi
+    done
+    return 0
+  done
+}
+
 # core.gardener.cloud APIs
 
-bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
+run bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
   deepcopy,defaulter,client,lister,informer \
   github.com/gardener/gardener/pkg/client/core \
   github.com/gardener/gardener/pkg/apis \
@@ -33,13 +63,19 @@ bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh 
   "core:v1alpha1,v1beta1" \
   -h "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt"
 
-bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
+run bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
   conversion \
   github.com/gardener/gardener/pkg/client/core \
   github.com/gardener/gardener/pkg/apis \
   github.com/gardener/gardener/pkg/apis \
   "core:v1alpha1,v1beta1" \
   -h "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt"
+
+sync
+
+echo "all synced"
+
+exit 0
 
 # extensions.gardener.cloud APIs
 
