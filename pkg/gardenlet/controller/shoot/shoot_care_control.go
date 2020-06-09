@@ -49,6 +49,22 @@ func (c *Controller) shootCareAdd(obj interface{}) {
 	c.shootCareQueue.Add(key)
 }
 
+func (c *Controller) shootCareUpdate(oldObj, newObj interface{}) {
+	oldShoot, ok1 := oldObj.(*gardencorev1beta1.Shoot)
+	newShoot, ok2 := newObj.(*gardencorev1beta1.Shoot)
+
+	if !ok1 || !ok2 {
+		return
+	}
+
+	oldSucceeded := oldShoot.Status.LastOperation != nil && oldShoot.Status.LastOperation.State == gardencorev1beta1.LastOperationStateSucceeded
+	newSucceeded := newShoot.Status.LastOperation != nil && newShoot.Status.LastOperation.State == gardencorev1beta1.LastOperationStateSucceeded
+
+	if !oldSucceeded && newSucceeded {
+		c.shootCareAdd(newObj)
+	}
+}
+
 func (c *Controller) reconcileShootCareKey(key string) error {
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
