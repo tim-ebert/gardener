@@ -149,8 +149,8 @@ func ReplaceCloudProviderConfigKey(cloudProviderConfig, separator, key, value st
 	return keyValueRegexp.ReplaceAllString(cloudProviderConfig, fmt.Sprintf(`${1}%q`, strings.Replace(value, `$`, `$$`, -1)))
 }
 
-// ProjectForNamespace returns the project object responsible for a given <namespace>. It tries to identify the project object by looking for the namespace
-// name in the project statuses.
+// ProjectForNamespace returns the project object responsible for a given <namespace>.
+// It tries to identify the project object by looking for the namespace name in the project spec.
 func ProjectForNamespace(projectLister gardencorelisters.ProjectLister, namespaceName string) (*gardencorev1beta1.Project, error) {
 	projectList, err := projectLister.List(labels.Everything())
 	if err != nil {
@@ -160,6 +160,24 @@ func ProjectForNamespace(projectLister gardencorelisters.ProjectLister, namespac
 	for _, project := range projectList {
 		if project.Spec.Namespace != nil && *project.Spec.Namespace == namespaceName {
 			return project, nil
+		}
+	}
+
+	return nil, apierrors.NewNotFound(gardencorev1beta1.Resource("Project"), fmt.Sprintf("for namespace %s", namespaceName))
+}
+
+// ProjectForNamespaceWithClient returns the project object responsible for a given <namespace>.
+// It tries to identify the project object by looking for the namespace name in the project spec.
+func ProjectForNamespaceWithClient(ctx context.Context, c client.Client, namespaceName string) (*gardencorev1beta1.Project, error) {
+	projectList := &gardencorev1beta1.ProjectList{}
+	err := c.List(ctx, projectList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, project := range projectList.Items {
+		if project.Spec.Namespace != nil && *project.Spec.Namespace == namespaceName {
+			return &project, nil
 		}
 	}
 
