@@ -21,6 +21,7 @@ import (
 	"time"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+
 	"github.com/gardener/gardener/pkg/apis/core"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/operation/botanist/component"
@@ -117,7 +118,7 @@ func (b *Botanist) DefaultExternalDNSProvider(seedClient client.Client) componen
 				},
 			},
 			b.Shoot.SeedNamespace,
-			b.ChartApplierSeed,
+			b.K8sSeedClient.ChartApplier(),
 			b.ChartsRootPath,
 			b.Logger,
 			seedClient,
@@ -131,7 +132,7 @@ func (b *Botanist) DefaultExternalDNSProvider(seedClient client.Client) componen
 			Purpose: DNSExternalName,
 		},
 		b.Shoot.SeedNamespace,
-		b.ChartApplierSeed,
+		b.K8sSeedClient.ChartApplier(),
 		b.ChartsRootPath,
 		b.Logger,
 		seedClient,
@@ -146,7 +147,7 @@ func (b *Botanist) DefaultExternalDNSEntry(seedClient client.Client) component.D
 			Name: DNSExternalName,
 		},
 		b.Shoot.SeedNamespace,
-		b.ChartApplierSeed,
+		b.K8sSeedClient.ChartApplier(),
 		b.ChartsRootPath,
 		b.Logger,
 		seedClient,
@@ -173,7 +174,7 @@ func (b *Botanist) DefaultInternalDNSProvider(seedClient client.Client) componen
 				},
 			},
 			b.Shoot.SeedNamespace,
-			b.ChartApplierSeed,
+			b.K8sSeedClient.ChartApplier(),
 			b.ChartsRootPath,
 			b.Logger,
 			seedClient,
@@ -187,7 +188,7 @@ func (b *Botanist) DefaultInternalDNSProvider(seedClient client.Client) componen
 			Purpose: DNSInternalName,
 		},
 		b.Shoot.SeedNamespace,
-		b.ChartApplierSeed,
+		b.K8sSeedClient.ChartApplier(),
 		b.ChartsRootPath,
 		b.Logger,
 		seedClient,
@@ -202,7 +203,7 @@ func (b *Botanist) DefaultInternalDNSEntry(seedClient client.Client) component.D
 			Name: DNSInternalName,
 		},
 		b.Shoot.SeedNamespace,
-		b.ChartApplierSeed,
+		b.K8sSeedClient.ChartApplier(),
 		b.ChartsRootPath,
 		b.Logger,
 		seedClient,
@@ -276,7 +277,7 @@ func (b *Botanist) AdditionalDNSProviders(ctx context.Context, gardenClient, see
 					},
 				},
 				b.Shoot.SeedNamespace,
-				b.ChartApplierSeed,
+				b.K8sSeedClient.ChartApplier(),
 				b.ChartsRootPath,
 				b.Logger,
 				seedClient,
@@ -305,7 +306,7 @@ func (b *Botanist) AdditionalDNSProviders(ctx context.Context, gardenClient, see
 					Labels:  map[string]string{v1beta1constants.GardenRole: DNSProviderRoleAdditional},
 				},
 				b.Shoot.SeedNamespace,
-				b.ChartApplierSeed,
+				b.K8sSeedClient.ChartApplier(),
 				b.ChartsRootPath,
 				b.Logger,
 				seedClient,

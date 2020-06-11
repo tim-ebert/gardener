@@ -120,6 +120,9 @@ func (a *actuator) Delete(ctx context.Context) error {
 // by the current progress of the Flow execution.
 func (a *actuator) reportBackupEntryProgress(ctx context.Context, stats *flow.Stats) {
 	if err := kutil.TryUpdateStatus(ctx, kretry.DefaultRetry, a.gardenClient, a.backupEntry, func() error {
+		if a.backupEntry.Status.LastOperation == nil {
+			return fmt.Errorf("last operation of BackupEntry %s/%s is unset", a.backupEntry.Namespace, a.backupEntry.Name)
+		}
 		a.backupEntry.Status.LastOperation.Description = makeDescription(stats)
 		a.backupEntry.Status.LastOperation.Progress = stats.ProgressPercent()
 		a.backupEntry.Status.LastOperation.LastUpdateTime = metav1.Now()
