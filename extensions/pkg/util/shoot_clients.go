@@ -16,6 +16,7 @@ package util
 
 import (
 	"context"
+	"fmt"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/chartrenderer"
@@ -111,6 +112,11 @@ func NewClientsForShoot(ctx context.Context, c client.Client, namespace string, 
 		return nil, err
 	}
 	shootChartApplier := shootGardenerClientset.ChartApplier()
+
+	shootGardenerClientset.Start(ctx.Done())
+	if !shootGardenerClientset.WaitForCacheSync(ctx.Done()) {
+		return nil, fmt.Errorf("timed out waiting for the controller-runtime cache to sync")
+	}
 
 	return &shootClients{
 		c:                 shootClient,

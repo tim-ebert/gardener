@@ -149,6 +149,16 @@ func (a *actuator) InjectClient(client client.Client) error {
 	return nil
 }
 
+// InjectStopChannel injects the controller manager's stop channel into the actuator and starts the clientset's cache.
+func (a *actuator) InjectStopChannel(stopCh <-chan struct{}) error {
+	a.gardenerClientset.Start(stopCh)
+	if !a.gardenerClientset.WaitForCacheSync(stopCh) {
+		return fmt.Errorf("timed out waiting for the controller-runtime cache to sync")
+	}
+
+	return nil
+}
+
 const (
 	// ControlPlaneShootChartResourceName is the name of the managed resource for the control plane
 	ControlPlaneShootChartResourceName = "extension-controlplane-shoot"

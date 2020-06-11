@@ -16,22 +16,23 @@ package genericactuator
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	extensionscontroller "github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/worker"
 	"github.com/gardener/gardener/extensions/pkg/util"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	gardenerkubernetes "github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/utils/flow"
 	"github.com/gardener/gardener/pkg/utils/imagevector"
+
 	machinev1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -107,6 +108,16 @@ func (a *genericActuator) InjectConfig(config *rest.Config) error {
 	}
 
 	a.chartApplier = a.gardenerClientset.ChartApplier()
+
+	return nil
+}
+
+// InjectStopChannel injects the controller manager's stop channel into the actuator and starts the clientset's cache.
+func (a *genericActuator) InjectStopChannel(stopCh <-chan struct{}) error {
+	a.gardenerClientset.Start(stopCh)
+	if !a.gardenerClientset.WaitForCacheSync(stopCh) {
+		return fmt.Errorf("timed out waiting for the controller-runtime cache to sync")
+	}
 
 	return nil
 }
