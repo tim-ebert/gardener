@@ -20,6 +20,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,14 +38,31 @@ func TryUpdateStatus(ctx context.Context, backoff wait.Backoff, c client.Client,
 	return tryUpdate(ctx, backoff, c, obj, c.Status().Update, transform)
 }
 
-func tryUpdate(ctx context.Context, backoff wait.Backoff, c client.Client, obj runtime.Object, updateFunc func(context.Context, runtime.Object, ...client.UpdateOption) error, transform func() error) error {
+func tryUpdate(ctx context.Context, backoff wait.Backoff, c client.Client, scheme *runtime.Scheme, obj runtime.Object, updateFunc func(context.Context, runtime.Object, ...client.UpdateOption) error, transform func() error) error {
 	key, err := client.ObjectKeyFromObject(obj)
 	if err != nil {
 		return err
 	}
 
 	return exponentialBackoff(ctx, backoff, func() (bool, error) {
-		if err := c.Get(ctx, key, obj); err != nil {
+		var objectFromServer runtime.Object
+
+		// create new typed object of the given kind or fallback to an unstructured object if it is not registered in the scheme
+		if typed, err := scheme.New(obj.GetObjectKind().GroupVersionKind()); err == nil {
+			objectFromServer = typed
+		} else {
+			u := &unstructured.Unstructured{}
+			u.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind())
+			objectFromServer = u
+		}
+
+		// get the current object
+		if err := c.Get(ctx, key, objectFromServer); err != nil {
+			return false, err
+		}
+
+		// copy back the result from the server into the original object
+		if err := scheme.Convert(objectFromServer, obj, nil); err != nil {
 			return false, err
 		}
 
