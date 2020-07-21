@@ -73,11 +73,26 @@ case $(k8s_env) in
         ;;
     $NODELESS)
         echo "Found Nodeless Kubernetes ..."
-        GO111MODULE=on go run \
-          -mod=vendor \
-          -ldflags "$ld_flags" \
-          "$(dirname $0)"/../../cmd/gardener-apiserver/main.go \
-          --etcd-servers http://localhost:22379 \
-          $apiserver_flags
+#        GO111MODULE=on go run \
+#          -mod=vendor \
+#          -ldflags "$ld_flags" \
+#          "$(dirname $0)"/../../cmd/gardener-apiserver/main.go \
+#          --etcd-servers http://localhost:22379 \
+#          $apiserver_flags
+
+        docker run -p 8443:8443 -v "$PWD/hack/local-development/local-garden/certificates":/tls \
+          -v "$PWD/hack/local-development/local-garden/kubeconfigs/default-apiserver.conf":/kubeconfig \
+          --add-host kube-apiserver:192.168.0.203 \
+          eu.gcr.io/gardener-project/gardener/apiserver:v1.8.0-dev-82226631efda5a8d1fba2d4e8e7c75ddd186f5fb \
+          --etcd-servers http://docker.for.mac.localhost:22379 \
+          --authentication-kubeconfig /kubeconfig \
+          --authorization-kubeconfig /kubeconfig \
+          --cluster-identity=gardener-local-${USER} \
+          --authorization-always-allow-paths=/healthz \
+          --kubeconfig /kubeconfig \
+          --secure-port=8443 \
+          --tls-cert-file /tls/certs/default-admin.crt \
+          --tls-private-key-file /tls/keys/default-admin.key \
+          --v 2
         ;;
 esac
