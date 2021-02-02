@@ -249,6 +249,12 @@ func autoConvert_v1alpha1_ServerConfiguration_To_config_ServerConfiguration(in *
 		return err
 	}
 	out.ResourceAdmissionConfiguration = (*config.ResourceAdmissionConfiguration)(unsafe.Pointer(in.ResourceAdmissionConfiguration))
+	if err := Convert_v1alpha1_Server_To_config_Server(&in.HealthProbes, &out.HealthProbes, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_Server_To_config_Server(&in.Metrics, &out.Metrics, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -262,6 +268,12 @@ func autoConvert_config_ServerConfiguration_To_v1alpha1_ServerConfiguration(in *
 		return err
 	}
 	out.ResourceAdmissionConfiguration = (*ResourceAdmissionConfiguration)(unsafe.Pointer(in.ResourceAdmissionConfiguration))
+	if err := Convert_config_Server_To_v1alpha1_Server(&in.HealthProbes, &out.HealthProbes, s); err != nil {
+		return err
+	}
+	if err := Convert_config_Server_To_v1alpha1_Server(&in.Metrics, &out.Metrics, s); err != nil {
+		return err
+	}
 	return nil
 }
 

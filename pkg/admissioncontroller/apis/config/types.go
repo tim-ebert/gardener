@@ -41,6 +41,10 @@ type ServerConfiguration struct {
 	HTTPS HTTPSServer
 	// ResourceAdmissionConfiguration is the configuration for the resource admission.
 	ResourceAdmissionConfiguration *ResourceAdmissionConfiguration
+	// HealthProbes is the configuration for serving the healthz and readyz endpoints.
+	HealthProbes Server
+	// Metrics is the configuration for serving the metrics endpoint.
+	Metrics Server
 }
 
 // ResourceAdmissionConfiguration contains settings about arbitrary kinds and the size each resource should have at most.

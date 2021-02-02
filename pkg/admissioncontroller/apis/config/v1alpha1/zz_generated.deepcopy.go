@@ -160,6 +160,8 @@ func (in *ServerConfiguration) DeepCopyInto(out *ServerConfiguration) {
 		*out = new(ResourceAdmissionConfiguration)
 		(*in).DeepCopyInto(*out)
 	}
+	out.HealthProbes = in.HealthProbes
+	out.Metrics = in.Metrics
 	return
 }
 

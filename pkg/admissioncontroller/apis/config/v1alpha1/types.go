@@ -42,6 +42,10 @@ type ServerConfiguration struct {
 	// ResourceAdmissionConfiguration is the configuration for the resource admission.
 	// +optional
 	ResourceAdmissionConfiguration *ResourceAdmissionConfiguration `json:"resourceAdmissionConfiguration,omitempty"`
+	// HealthProbes is the configuration for serving the healthz and readyz endpoints.
+	HealthProbes Server `json:"healthProbes,omitempty"`
+	// Metrics is the configuration for serving the metrics endpoint.
+	Metrics Server `json:"metrics,omitempty"`
 }
 
 // ResourceAdmissionConfiguration contains settings about arbitrary kinds and the size each resource should have at most.
