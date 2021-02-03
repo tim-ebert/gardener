@@ -19,6 +19,7 @@ SCHEDULER_IMAGE_REPOSITORY          := $(REGISTRY)/scheduler
 ADMISSION_IMAGE_REPOSITORY          := $(REGISTRY)/admission-controller
 SEED_ADMISSION_IMAGE_REPOSITORY     := $(REGISTRY)/seed-admission-controller
 GARDENLET_IMAGE_REPOSITORY          := $(REGISTRY)/gardenlet
+DEV_IMAGE_REPOSITORY                := $(REGISTRY)/gardener-dev
 PUSH_LATEST_TAG                     := false
 VERSION                             := $(shell cat VERSION)
 EFFECTIVE_VERSION                   := $(VERSION)-$(shell git rev-parse HEAD)
@@ -82,6 +83,29 @@ start-seed-admission-controller:
 .PHONY: start-gardenlet
 start-gardenlet:
 	@./hack/local-development/start-gardenlet
+
+.PHONY: start-dev-container
+start-dev-container: dev-kubeconfig docker-dev-image
+	# starting dev container
+	@docker run -it -v $(shell go env GOCACHE):/root/.cache/go-build \
+		-v $(REPO_ROOT):/go/src/github.com/gardener/gardener \
+		-v $(REPO_ROOT)/dev/testbin-container:/go/src/github.com/gardener/gardener/dev/testbin \
+		-e KUBEBUILDER_ASSETS=/go/src/github.com/gardener/gardener/testbin/bin \
+		-e KUBECONFIG=/go/src/github.com/gardener/gardener/dev/kubeconfig-dev.yaml \
+		-e NAMESPACE=${NAMESPACE} \
+		--name gardener-dev --rm \
+		$(DEV_IMAGE_REPOSITORY):$(VERSION) \
+		bash
+
+.PHONY: docker-dev-image
+docker-dev-image:
+	@DOCKER_BUILDKIT=1 docker build -t $(DEV_IMAGE_REPOSITORY):$(VERSION) --rm --target dev \
+		--build-arg BUILDKIT_INLINE_CACHE=1 .
+
+.PHONY: dev-kubeconfig
+dev-kubeconfig:
+	@mkdir -p dev
+	@kubectl config view --raw | sed -E 's/127.0.0.1|localhost/host.docker.internal/' > dev/kubeconfig-dev.yaml
 
 #################################################################
 # Rules related to binary build, Docker image build and release #

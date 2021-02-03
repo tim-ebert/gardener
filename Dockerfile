@@ -1,5 +1,11 @@
+############# base
+FROM eu.gcr.io/gardener-project/3rd/alpine:3.12.3 AS base
+
+############# golang-base
+FROM eu.gcr.io/gardener-project/3rd/golang:1.15.7 AS golang-base
+
 #############      builder       #############
-FROM eu.gcr.io/gardener-project/3rd/golang:1.15.7 AS builder
+FROM golang-base AS builder
 
 WORKDIR /go/src/github.com/gardener/gardener
 COPY . .
@@ -8,8 +14,6 @@ ARG EFFECTIVE_VERSION
 
 RUN make install EFFECTIVE_VERSION=$EFFECTIVE_VERSION
 
-############# base
-FROM eu.gcr.io/gardener-project/3rd/alpine:3.12.3 AS base
 
 #############      apiserver     #############
 FROM base AS apiserver
@@ -72,3 +76,15 @@ COPY --from=builder /go/bin/gardener-seed-admission-controller /gardener-seed-ad
 WORKDIR /
 
 ENTRYPOINT ["/gardener-seed-admission-controller"]
+
+############# dev #############
+FROM golang-base AS dev
+
+WORKDIR /go/src/github.com/gardener/gardener
+VOLUME /go/src/github.com/gardener/gardener
+
+COPY vendor vendor
+COPY hack hack
+COPY Makefile VERSION go.mod go.sum ./
+
+RUN make install-requirements
