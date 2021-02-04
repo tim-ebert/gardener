@@ -22,6 +22,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	admissionv1 "k8s.io/api/admission/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+
 	"github.com/gardener/gardener/pkg/logger"
 
 	"github.com/sirupsen/logrus"
@@ -37,6 +40,48 @@ const (
 	// https://github.com/kubernetes/kubernetes/blob/d8eac8df28e6b50cd0f5380e23fc57daaf92972e/staging/src/k8s.io/apiserver/pkg/server/config.go#L322
 	maxRequestBody = 3 * 1024 * 1024
 )
+
+// type limitedReadCloser struct {
+// 	reader *io.LimitedReader
+// }
+//
+// func (l limitedReadCloser) Read(p []byte) (n int, err error) {
+// 	n, err = l.reader.Read(p)
+// 	if l.reader.N <= 0 {
+// 		metrics.InvalidWebhookRequest.WithLabelValues().Inc()
+// 		return n, apierrors.NewRequestEntityTooLargeError(fmt.Sprintf("limit is %d", maxRequestBody))
+// 	}
+// 	return
+// }
+//
+// func (l limitedReadCloser) Close() error { return nil }
+//
+// var _ http.Handler = limitedHandler{}
+//
+// type limitedHandler struct {
+// 	handler http.Handler
+// }
+//
+// func (l limitedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// 	lr := limitedReadCloser{&io.LimitedReader{R: r.Body, N: maxRequestBody + 1}}
+// 	r.Body = lr
+// 	l.handler.ServeHTTP(w, r)
+// }
+
+func admissionAllowed(msg string) admission.Response {
+	resp := admission.Response{
+		AdmissionResponse: admissionv1.AdmissionResponse{
+			Allowed: true,
+			Result: &metav1.Status{
+				Code: int32(http.StatusOK),
+			},
+		},
+	}
+	if len(msg) > 0 {
+		resp.Result.Message = msg
+	}
+	return resp
+}
 
 func admissionResponse(allowed bool, msg string) *admissionv1beta1.AdmissionResponse {
 	response := &admissionv1beta1.AdmissionResponse{

@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gardener/gardener/pkg/admissioncontroller/server/metrics"
+	"github.com/gardener/gardener/pkg/admissioncontroller/metrics"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/logger"
