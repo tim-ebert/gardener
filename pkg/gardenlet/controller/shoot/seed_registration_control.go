@@ -143,6 +143,9 @@ func (c *defaultSeedRegistrationControl) Reconcile(ctx context.Context, shoot *g
 		c.recorder.Event(shoot, corev1.EventTypeWarning, "ManagedSeedGet", message)
 		return reconcile.Result{}, err
 	}
+	if !exists && shootedSeed == nil {
+		return reconcile.Result{}, nil
+	}
 	if exists && !isOwnedBy {
 		logger.Logger.Infof("[SHOOTED SEED REGISTRATION] Skipping ManagedSeed object update or deletion for shoot %s because it's not owned by this shoot", kutil.ObjectName(shoot))
 		return reconcile.Result{}, nil

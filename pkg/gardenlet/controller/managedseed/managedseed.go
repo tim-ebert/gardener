@@ -82,7 +82,7 @@ func (c *Controller) Run(ctx context.Context, workers int) {
 		FilterFunc: controllerutils.ManagedSeedFilterFunc(ctx, c.gardenClient, confighelper.SeedNameFromSeedConfig(c.config.SeedConfig), c.config.SeedSelector),
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				c.managedSeedAdd(obj, false)
+				c.managedSeedAdd(obj, true)
 			},
 			UpdateFunc: c.managedSeedUpdate,
 			DeleteFunc: c.managedSeedDelete,
