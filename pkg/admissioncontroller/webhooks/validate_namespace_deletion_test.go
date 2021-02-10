@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/gardener/gardener/pkg/admissioncontroller/server/handlers/webhooks"
+	"github.com/gardener/gardener/pkg/admissioncontroller/webhooks"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	coreinformers "github.com/gardener/gardener/pkg/client/core/informers/externalversions"
 	"github.com/gardener/gardener/pkg/client/kubernetes/fake"
@@ -59,7 +59,7 @@ var _ = Describe("ValidateNamespaceDeletion", func() {
 		}
 	)
 
-	DescribeTable("Namespace deletion admission",
+	PDescribeTable("Namespace deletion admission",
 		func(namespace func() *corev1.Namespace, mock *mockClient, op admissionv1beta1.Operation, expectedAllowed bool, expectedMsg string) {
 			defer mock.ctrl.Finish()
 			cache := mockcache.NewMockCache(mock.ctrl)

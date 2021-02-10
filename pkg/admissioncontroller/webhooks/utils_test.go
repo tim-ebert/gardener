@@ -22,9 +22,9 @@ import (
 	"net/http/httptest"
 	"reflect"
 
-	"github.com/gardener/gardener/pkg/logger"
+	gardenlogger "github.com/gardener/gardener/pkg/logger"
 
-	. "github.com/gardener/gardener/pkg/admissioncontroller/server/handlers/webhooks"
+	. "github.com/gardener/gardener/pkg/admissioncontroller/webhooks"
 	core "github.com/gardener/gardener/pkg/apis/core/install"
 
 	. "github.com/onsi/ginkgo"
@@ -74,7 +74,7 @@ var _ = Describe("Utils tests", func() {
 		DescribeTable("#DecodeAdmissionRequest",
 			func(r func() *http.Request, limit int64, objMatcher gomegatypes.GomegaMatcher, errMatcher gomegatypes.GomegaMatcher) {
 				into := &admissionv1beta1.AdmissionReview{}
-				err := DecodeAdmissionRequest(r(), decoder, into, limit, logger.NewNopLogger())
+				err := DecodeAdmissionRequest(r(), decoder, into, limit, gardenlogger.NewNopLogger())
 				Expect(into).To(objMatcher)
 				Expect(err).To(errMatcher)
 			},
