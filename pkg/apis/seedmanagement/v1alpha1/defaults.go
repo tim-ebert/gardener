@@ -15,6 +15,7 @@
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
@@ -86,13 +87,13 @@ func setDefaultsGardenlet(obj *Gardenlet, name, namespace string) {
 
 	// Decode / initialize gardenlet config
 	var gardenletConfig *configv1alpha1.GardenletConfiguration
-	if obj.Config != nil {
+	if obj.Config.Object == nil {
 		// Decode gardenlet config to an external version
 		// Without defaults, since we don't want to set gardenlet config defaults in the resource at this point
 		// Ignoring errors, since this package does not support proper error reporting
 		// and if we just return here obj.Config will remain uninitialized, resulting in no error message but
 		// wrong behavior later on
-		gardenletConfig, _ = helper.DecodeGardenletConfigurationExternal(obj.Config, false)
+		gardenletConfig, _ = helper.DecodeGardenletConfigurationExternal(&obj.Config, false)
 	}
 	if gardenletConfig == nil {
 		gardenletConfig = &configv1alpha1.GardenletConfiguration{
@@ -106,8 +107,10 @@ func setDefaultsGardenlet(obj *Gardenlet, name, namespace string) {
 	// Set gardenlet config defaults
 	setDefaultsGardenletConfiguration(gardenletConfig, name, namespace)
 
+	configJSON, _ := json.Marshal(gardenletConfig)
+
 	// Set gardenlet config back to obj.Config
-	obj.Config = &runtime.RawExtension{Object: gardenletConfig}
+	obj.Config = runtime.RawExtension{Raw: configJSON}
 
 	// Set default garden connection bootstrap
 	if obj.Bootstrap == nil {

@@ -19,7 +19,6 @@ import (
 
 	"github.com/gardener/gardener/pkg/apis/seedmanagement"
 
-	"k8s.io/apimachinery/pkg/conversion"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -38,21 +37,5 @@ func addConversionFuncs(scheme *runtime.Scheme) error {
 		return err
 	}
 
-	return nil
-}
-
-func Convert_v1alpha1_Gardenlet_To_seedmanagement_Gardenlet(in *Gardenlet, out *seedmanagement.Gardenlet, s conversion.Scope) error {
-	if err := autoConvert_v1alpha1_Gardenlet_To_seedmanagement_Gardenlet(in, out, s); err != nil {
-		return err
-	}
-	out.Config = in.Config.Object
-	return nil
-}
-
-func Convert_seedmanagement_Gardenlet_To_v1alpha1_Gardenlet(in *seedmanagement.Gardenlet, out *Gardenlet, s conversion.Scope) error {
-	if err := autoConvert_seedmanagement_Gardenlet_To_v1alpha1_Gardenlet(in, out, s); err != nil {
-		return err
-	}
-	out.Config = &runtime.RawExtension{Object: in.Config}
 	return nil
 }
