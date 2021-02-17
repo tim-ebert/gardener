@@ -40,6 +40,7 @@ import (
 	configvalidation "github.com/gardener/gardener/pkg/admissioncontroller/apis/config/validation"
 	"github.com/gardener/gardener/pkg/admissioncontroller/webhooks"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
+	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
 )
 
 const (
@@ -142,6 +143,9 @@ func (o *options) run(ctx context.Context) error {
 	if err := mgr.AddReadyzCheck("ping", healthz.Ping); err != nil {
 		return err
 	}
+	if err := mgr.AddReadyzCheck("informer-sync", gardenerhealthz.NewCacheSyncHealthz(mgr.GetCache())); err != nil {
+		return err
+	}
 	if err := mgr.AddHealthzCheck("ping", healthz.Ping); err != nil {
 		return err
 	}
@@ -149,12 +153,12 @@ func (o *options) run(ctx context.Context) error {
 	log.Info("setting up webhook server")
 	server := mgr.GetWebhookServer()
 
-	// namespaceValidationHandler, err := webhooks.NewValidateNamespaceDeletionHandler(ctx, nil)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// server.Register("/webhooks/validate-namespace-deletion", namespaceValidationHandler)
+	namespaceValidationHandler, err := webhooks.NewValidateNamespaceDeletionHandler(ctx, mgr.GetCache())
+	if err != nil {
+		return err
+	}
+
+	server.Register("/webhooks/validate-namespace-deletion", &webhook.Admission{Handler: namespaceValidationHandler})
 	server.Register("/webhooks/validate-kubeconfig-secrets", &webhook.Admission{Handler: &webhooks.KubeconfigSecretValidator{}})
 	server.Register("/webhooks/validate-resource-size", &webhook.Admission{Handler: &webhooks.ObjectSizeHandler{Config: o.config.Server.ResourceAdmissionConfiguration}})
 

@@ -69,11 +69,9 @@ func (h *KubeconfigSecretValidator) Handle(_ context.Context, request admission.
 	if request.Operation != admissionv1.Create && request.Operation != admissionv1.Update {
 		return admissionAllowed("operation is neither CREATE nor UPDATE")
 	}
-
 	if request.Kind != secretGVK {
 		return admissionAllowed("resource is not corev1.Secret")
 	}
-
 	if request.SubResource != "" {
 		return admissionAllowed("subresources on secrets are not handled")
 	}
