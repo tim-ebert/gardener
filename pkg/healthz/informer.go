@@ -20,6 +20,10 @@ import (
 	"net/http"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 )
 
@@ -39,4 +43,42 @@ func NewCacheSyncHealthz(cacheSyncWaiter cacheSyncWaiter) healthz.Checker {
 		}
 		return nil
 	}
+}
+
+// NewInformerSyncHealthz returns a new healthz.Checker that will pass only if all informers for the given object kinds
+// in the informersCache sync.
+func NewInformerSyncHealthz(informersCache cache.Informers, scheme *runtime.Scheme, objs ...runtime.Object) (healthz.Checker, error) {
+	if len(objs) == 0 {
+		return nil, fmt.Errorf("no objects provided")
+	}
+
+	var gvks []schema.GroupVersionKind
+	for _, obj := range objs {
+		gvk, err := apiutil.GVKForObject(obj, scheme)
+		if err != nil {
+			return nil, err
+		}
+		gvks = append(gvks, gvk)
+	}
+
+	return func(_ *http.Request) error {
+		// cancel context to force checking if informers are synced now.
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		informersBySynced := make(map[bool][]string)
+		for _, gvk := range gvks {
+			synced := false
+			informer, err := informersCache.GetInformerForKind(ctx, gvk)
+			if err == nil {
+				synced = informer.HasSynced()
+			}
+			informersBySynced[synced] = append(informersBySynced[synced], gvk.String())
+		}
+
+		if notSynced := informersBySynced[false]; len(notSynced) > 0 {
+			return fmt.Errorf("%d informers not synced yet: %v", len(notSynced), notSynced)
+		}
+		return nil
+	}, nil
 }
