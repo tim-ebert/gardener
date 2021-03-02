@@ -25,6 +25,7 @@ import (
 	runtimecache "sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 )
@@ -138,7 +139,13 @@ func (c *controllerArtifacts) registerExtensionControllerArtifacts(controllerIns
 }
 
 // initialize obtains the informers for the enclosing artifacts.
-func (c *controllerArtifacts) initialize(ctx context.Context, seedClient kubernetes.Interface) error {
+func (c *controllerArtifacts) initialize(ctx context.Context, gardenClient, seedClient kubernetes.Interface, seedName string) error {
+	ctrlInstInformer, err := gardenClient.Cache().GetInformer(ctx, &gardencorev1beta1.ControllerInstallation{})
+	if err != nil {
+		return err
+	}
+	c.hasSyncedFuncs = append(c.hasSyncedFuncs, ctrlInstInformer.HasSynced)
+
 	initialize := func(a *artifact) error {
 		informer, err := seedClient.Cache().GetInformerForKind(ctx, a.gvk)
 		if err != nil {
@@ -155,6 +162,20 @@ func (c *controllerArtifacts) initialize(ctx context.Context, seedClient kuberne
 		if err := initialize(artifact); err != nil {
 			return err
 		}
+
+		// enqueue key when ctrlinst is added
+		ctrlInstInformer.AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				controllerInstallation, ok := obj.(*gardencorev1beta1.ControllerInstallation)
+				if !ok {
+					return false
+				}
+				return controllerInstallation.Spec.SeedRef.Name == seedName
+			},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: createEnqueueEmptyRequestFunc(artifact.queue),
+			},
+		})
 	}
 
 	for _, artifact := range c.stateArtifacts {

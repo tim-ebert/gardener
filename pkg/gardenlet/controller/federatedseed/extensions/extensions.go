@@ -73,7 +73,7 @@ func NewController(ctx context.Context, gardenClient, seedClient kubernetes.Inte
 		},
 	}
 
-	if err := controllerArtifacts.initialize(ctx, seedClient); err != nil {
+	if err := controllerArtifacts.initialize(ctx, gardenClient, seedClient, seedName); err != nil {
 		return nil, err
 	}
 
